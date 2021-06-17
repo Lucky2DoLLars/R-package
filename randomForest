@@ -1,0 +1,65 @@
+# install.packages("randomForest")
+library(randomForest)
+library(MASS)
+
+set.seed(1)
+
+# regression RF
+
+data(Boston)
+train = sample(1 : nrow(Boston), nrow(Boston)/2)
+boston.test = Boston[-train, "medv"]
+
+bag.boston = randomForest(medv ~ . , data = Boston, subset = train)
+
+yhat.bag = predict(bag.boston, newdata = Boston[-train, ])
+
+plot(yhat.bag, boston.test)
+abline(0, 1)
+mean((yhat.bag - boston.test)^2)
+
+# cv
+boston.train = Boston[train, ]
+
+cv.boston = rfcv(boston.train[,!colnames(boston.train) == "medv"], boston.train[,"medv"],
+                 cv.fold = 5, step = 0.8)
+
+cv.boston$n.var[which.min(cv.boston$error.cv)]
+
+# optimal p = 10
+rf.boston = randomForest(medv ~ . , data = Boston, subset = train, mtry = 10,
+                         importance = TRUE)
+
+yhat.bag = predict(bag.boston, newdata = Boston[-train, ])
+
+plot(yhat.bag, boston.test)
+abline(0, 1)
+mean((yhat.bag - boston.test)^2)
+
+# importance
+
+importance(rf.boston)
+varImpPlot(rf.boston)
+
+# classification RF
+
+library(ISLR)
+data(Carseats)
+str(Carseats)
+High = ifelse(Carseats$Sales <= 8, "No", "Yes")
+High = as.factor(High)
+Carseats = data.frame(Carseats, High)
+
+train = sample(1 : nrow(Carseats), 200)
+Carseats.train = Carseats[train, ]
+Carseats.test = Carseats[-train, ]
+
+cv.Carseats = rfcv(Carseats.train[, !colnames(Carseats.train) == "High"], Carseats.train[, "High"],
+     cv.fold = 5, step = 0.8)
+
+cv.Carseats$n.var[which.min(cv.Carseats$error.cv)]
+
+rf.Carseats = randomForest(High ~ . , data = Carseats, subset = train, mtry = 10,
+                           importance = TRUE)
+rf.pred = predict(rf.Carseats, newdata = Carseats.test)
+table(rf.pred, Carseats.test[, "High"])
