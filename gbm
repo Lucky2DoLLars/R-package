@@ -1,0 +1,55 @@
+install.packages("gbm")
+library(gbm)
+library(MASS)
+
+# regression boosting
+
+data(Boston)
+train = sample(1 : nrow(Boston), nrow(Boston)/2)
+boston.test = Boston[-train, "medv"]
+
+boost.boston = gbm(medv ~ . , data = Boston[train, ], distribution = "gaussian",
+                   n.trees = 5000, interaction.depth = 5, cv.folds = 10,
+                   shrinkage = 0.2)
+
+which.min(boost.boston$cv.error)
+
+summary(boost.boston)
+plot(boost.boston, i = "rm")
+plot(boost.boston, i = "lstat")
+yhat.boost = predict(boost.boston, newdata = Boston[-train, ])
+
+mean((yhat.boost - boston.test)^2)
+
+plot(yhat.boost, boston.test)
+abline(0, 1)
+
+
+# classification boosting
+
+library(pROC)
+library(ISLR)
+data(Carseats)
+str(Carseats)
+High = ifelse(Carseats$Sales <= 8, 0, 1)
+
+Carseats = data.frame(Carseats, High)
+
+train = sample(1 : nrow(Carseats), 200)
+Carseats.train = Carseats[train, ]
+Carseats.test = Carseats[-train, ]
+
+boost.Carseats = gbm(High ~ . , data = Carseats.train, distribution = "bernoulli",
+                  cv.folds = 5, shrinkage = 0.2)
+
+which.min(boost.Carseats$cv.error)
+
+boost.pred = predict(boost.Carseats, newdata = Carseats.test)
+boost.pred.prob = exp(boost.pred) / (1 + exp(boost.pred))
+
+boost.pred = boost.pred > 0
+table(boost.pred, Carseats.test[, "High"])
+
+roc = roc(Carseats.test[, "High"], boost.pred.prob)
+plot(roc)
+auc(Carseats.test[, "High"], boost.pred.prob)
